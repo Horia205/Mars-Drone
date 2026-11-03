@@ -57,12 +57,15 @@ class Drone:
     """Connection to one vehicle. A background thread keeps the latest
     telemetry in self.state so commands can read it at any time."""
 
-    def __init__(self, address, baud):
+    def __init__(self, address, baud=57600, source_component=190):
         self.address = address
-        # 255/190 = the IDs a ground control station normally uses.
+        # 255/190 = the IDs a ground control station normally uses. Scripts that
+        # run alongside the console pass another component id so their command
+        # replies don't get mixed up.
         self.master = mavutil.mavlink_connection(
-            address, baud=baud, source_system=255, source_component=190
+            address, baud=baud, source_system=255, source_component=source_component
         )
+        self.source_component = source_component
         self.send_lock = threading.Lock()
         self.cond = threading.Condition()
         self.state = {}  # message type -> latest message
@@ -119,6 +122,8 @@ class Drone:
             if kind == "HEARTBEAT" and msg.get_srcComponent() == self.master.target_component:
                 self._store_heartbeat(msg)
             elif kind == "COMMAND_ACK":
+                if getattr(msg, "target_component", 0) not in (0, self.source_component):
+                    continue  # reply to another ground station's command
                 with self.cond:
                     self.acks[msg.command] = msg
                     self.cond.notify_all()

@@ -8,7 +8,8 @@
 #   2. enables the GPIO serial port the Pixhawk is wired to (and frees it
 #      from Bluetooth and the serial login console)
 #   3. installs a service that starts at boot and forwards MAVLink from the
-#      Pixhawk to the network on TCP ports 5760 and 5761
+#      Pixhawk to the network on TCP ports 5760 and 5761 (laptop, Mission
+#      Planner) and to 5762 on the Pi itself (mission.py)
 # Reboot afterwards so the serial port changes take effect.
 set -euo pipefail
 
@@ -25,7 +26,11 @@ SERVICE=/etc/systemd/system/mars-drone-bridge.service
 
 echo "==> Installing system packages"
 apt-get update
-apt-get install -y python3-venv python3-pip python3-dev git
+apt-get install -y python3-venv python3-pip python3-dev git tmux
+# Camera programs: rpicam-apps for the Pi camera module (libcamera-apps on older
+# OS versions), fswebcam for USB webcams.
+apt-get install -y rpicam-apps || apt-get install -y libcamera-apps || true
+apt-get install -y fswebcam || true
 # ModemManager probes USB serial devices and can grab the Pixhawk's port.
 apt-get purge -y modemmanager || true
 
@@ -70,7 +75,7 @@ fi
 echo "==> Installing the mars-drone-bridge service"
 cat > "$SERVICE" <<EOF
 [Unit]
-Description=MARS drone MAVLink bridge (Pixhawk serial -> TCP 5760/5761)
+Description=MARS drone MAVLink bridge (Pixhawk serial -> TCP 5760/5761/5762)
 After=network-online.target
 Wants=network-online.target
 
@@ -83,7 +88,7 @@ WorkingDirectory=/var/lib/mars-drone
 # "set heartbeat 0": the bridge must not pretend to be a ground station, or the
 # Pixhawk's GCS failsafe would never notice the laptop's link dropping.
 ExecStart=$INSTALL_DIR/venv/bin/mavproxy.py --master=\${SERIAL_PORT} --baudrate=\${BAUD} \\
-    --out=tcpin:0.0.0.0:5760 --out=tcpin:0.0.0.0:5761 \\
+    --out=tcpin:0.0.0.0:5760 --out=tcpin:0.0.0.0:5761 --out=tcpin:127.0.0.1:5762 \\
     --daemon --non-interactive --state-basedir=/var/lib/mars-drone \\
     "--cmd=set heartbeat 0"
 Restart=always

@@ -14,6 +14,14 @@ Laptop commands work in **PowerShell** (from `C:\Users\hp570684\Mars-Drone`) or 
 
 Everything goes over SSH, so the Pi can stay on the drone.
 
+**Quick way: one command from the laptop.** Power the drone on, so the Pixhawk is on and plugged into the Pi, then in PowerShell run:
+
+```bash
+ssh -t EngineeringStudent@<pi-ip> "git clone https://github.com/Horia205/Mars-Drone.git ~/mars-drone 2>/dev/null || git -C ~/mars-drone pull; cd ~/mars-drone && sudo bash pi/setup_pi.sh && sudo reboot"
+```
+
+It asks for the Pi's password twice: once to log in and once for `sudo`. It downloads (or updates) the code, runs the setup and restarts the Pi. After about a minute, do step 6 below to check it worked. If something fails, or the Pi has no internet, follow the steps one by one instead.
+
 **1. Log in to the Pi** from the laptop:
 
 ```bash
@@ -184,6 +192,60 @@ ssh -t EngineeringStudent@<pi-ip> sudo poweroff
 ```
 
 Wait about 20 seconds, then unplug the battery.
+
+---
+
+## Part 4: Photo mission (take off to 20 m, face north, photo + GPS, land)
+
+`mission.py` does the whole flight by itself:
+1. switch to GUIDED, arm and climb to 20 m;
+2. turn to face **north**, wait for a steady hover;
+3. save the GPS position to a text file and take a photo;
+4. land and disarm.
+
+It runs **on the Pi**, because the camera is there and it keeps working if the laptop goes out of WiFi range.
+
+**Only fly it after every test in [BENCH_TEST.md](BENCH_TEST.md) passes,** with a pilot on the RC transmitter.
+
+**Before the first mission:**
+- `param FENCE_ALT_MAX` must be **above 20** if the fence is on, or the fence stops the climb.
+- Calibrate the compass ([HARDWARE.md](HARDWARE.md)); "north" is only as good as the compass.
+- The photo's top edge points north only if the camera is mounted facing the drone's nose (front). Check how it is mounted.
+- Test the camera on the ground first: `mission.py --photo-only` ([BENCH_TEST.md](BENCH_TEST.md), test 7).
+
+**1. Do Part 3, steps 1–4** (power on, check the bridge, pre-flight `status`). Leave the console open to watch; just don't type commands while the mission runs.
+
+**2. Open a tmux window on the Pi** from a second PowerShell window:
+
+```bash
+ssh -t EngineeringStudent@<pi-ip> tmux new -A -s mission
+```
+
+**3. Start the mission:**
+
+```bash
+cd ~/mars-drone && /opt/mars-drone/venv/bin/python mission.py
+```
+
+It checks GPS (3D fix, 8+ satellites), then asks you to type `yes`. Use `--alt 10` for another altitude.
+
+**4. While it flies:**
+- It prints each step: altitude, turning north, `Position saved`, `Photo saved`, `Landing`, `Landed and disarmed`.
+- **Ctrl+C** in the tmux window stops the mission and lands.
+- **The pilot can take over at any moment** with the mode switch. The script then stops sending commands.
+- If the SSH window closes, the mission carries on. Run the step 2 command again to see it.
+
+**5. Get the photos and positions onto the laptop.** In PowerShell, from the folder you want them in:
+
+```bash
+scp -r EngineeringStudent@<pi-ip>:~/mars-drone/flights .
+```
+
+Each mission makes a folder `flights/<date>_<time>/` containing:
+- `photo.jpg`;
+- `gps.txt`: latitude, longitude, altitude, heading and GPS quality at the moment of the photo.
+
+`flights/photos.csv` lists every photo with its coordinates. It opens in Excel and imports into mapping tools.
 
 ---
 

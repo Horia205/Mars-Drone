@@ -9,16 +9,18 @@ Control the drone's Pixhawk from a laptop terminal, through the Raspberry Pi on 
 ```
 
 - **Laptop** runs `drone_console.py`: you type `arm`, `takeoff 5`, `land`, ... and it shows what the drone answers.
-- **Pi** only forwards MAVLink between the Pixhawk's serial wire and the network. It starts by itself at boot.
+- **Pi** forwards MAVLink between the Pixhawk's cable and the network; the bridge starts by itself at boot. It also runs `mission.py`, the automatic photo flight, because the camera is on the Pi.
 - MAVLink is sent with **pymavlink**. We use it instead of DroneKit because DroneKit is unmaintained and its released version crashes on Python 3.10+. pymavlink is the library DroneKit is built on.
 
 **Guides:**
 - [docs/FLYING.md](docs/FLYING.md): put the software on the drone's Pi over SSH, start it, fly from the laptop.
-- [docs/HARDWARE.md](docs/HARDWARE.md): wiring, power, calibration, bench test, pre-flight checklist.
+- [docs/BENCH_TEST.md](docs/BENCH_TEST.md): props-off tests, checking the RC pilot can always take back control.
+- [docs/HARDWARE.md](docs/HARDWARE.md): wiring, power, calibration, motor test, pre-flight checklist.
 
 | File | What it is |
 |---|---|
 | `drone_console.py` | The console you run on the laptop |
+| `mission.py` | Photo mission, run on the Pi: 20 m, face north, photo + GPS to a text file, land |
 | `pi/setup_pi.sh` | One-time Pi setup: serial port, MAVProxy, auto-start service |
 | `pi/check_pixhawk.py` | Finds which port/baud the Pixhawk is on, and whether it runs ArduPilot or PX4 |
 | `sim/run_sim.sh` | Runs a simulated drone on the laptop for practice |
