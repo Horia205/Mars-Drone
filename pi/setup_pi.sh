@@ -26,6 +26,8 @@ SERVICE=/etc/systemd/system/mars-drone-bridge.service
 echo "==> Installing system packages"
 apt-get update
 apt-get install -y python3-venv python3-pip python3-dev git
+# ModemManager probes USB serial devices and can grab the Pixhawk's port.
+apt-get purge -y modemmanager || true
 
 echo "==> Creating Python environment in $INSTALL_DIR/venv"
 python3 -m venv "$INSTALL_DIR/venv"
