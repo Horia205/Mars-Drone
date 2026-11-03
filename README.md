@@ -12,6 +12,10 @@ Control the drone's Pixhawk from a laptop terminal, through the Raspberry Pi on 
 - **Pi** only forwards MAVLink between the Pixhawk's serial wire and the network. It starts by itself at boot.
 - MAVLink is sent with **pymavlink**. We use it instead of DroneKit because DroneKit is unmaintained and its released version crashes on Python 3.10+. pymavlink is the library DroneKit is built on.
 
+**Guides:**
+- [docs/FLYING.md](docs/FLYING.md): put the software on the drone's Pi over SSH, start it, fly from the laptop.
+- [docs/HARDWARE.md](docs/HARDWARE.md): wiring, power, calibration, bench test, pre-flight checklist.
+
 | File | What it is |
 |---|---|
 | `drone_console.py` | The console you run on the laptop |

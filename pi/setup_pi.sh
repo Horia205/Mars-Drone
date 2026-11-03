@@ -49,11 +49,18 @@ usermod -aG dialout "$RUN_USER"
 
 echo "==> Writing settings to $CONFIG"
 if [[ ! -f $CONFIG ]]; then
-    cat > "$CONFIG" <<'EOF'
+    # A Pixhawk plugged in by USB shows up under /dev/serial/by-id (a name that
+    # survives re-plugging); otherwise assume the GPIO serial port.
+    PORT=/dev/serial0
+    for dev in /dev/serial/by-id/*; do
+        [[ -e $dev ]] && PORT=$dev && break
+    done
+    echo "    using SERIAL_PORT=$PORT"
+    cat > "$CONFIG" <<EOF
 # Settings for the MARS drone MAVLink bridge.
 # After changing them:  sudo systemctl restart mars-drone-bridge
 # Run pi/check_pixhawk.py to find the right values.
-SERIAL_PORT=/dev/serial0
+SERIAL_PORT=$PORT
 BAUD=57600
 EOF
 else
@@ -73,9 +80,12 @@ SupplementaryGroups=dialout
 EnvironmentFile=$CONFIG
 StateDirectory=mars-drone
 WorkingDirectory=/var/lib/mars-drone
+# "set heartbeat 0": the bridge must not pretend to be a ground station, or the
+# Pixhawk's GCS failsafe would never notice the laptop's link dropping.
 ExecStart=$INSTALL_DIR/venv/bin/mavproxy.py --master=\${SERIAL_PORT} --baudrate=\${BAUD} \\
     --out=tcpin:0.0.0.0:5760 --out=tcpin:0.0.0.0:5761 \\
-    --daemon --non-interactive --state-basedir=/var/lib/mars-drone
+    --daemon --non-interactive --state-basedir=/var/lib/mars-drone \\
+    "--cmd=set heartbeat 0"
 Restart=always
 RestartSec=3
 
