@@ -99,6 +99,8 @@ def save_location(drone, folder, image_name):
     sats = gps.satellites_visible if gps else 0
     when = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     facing = heading(drone)
+    # Without a fix the Pixhawk reports 0, 0 (or a stale guess) - never map that.
+    valid = gps is not None and gps.fix_type >= 3 and (lat, lon) != (0, 0)
 
     with open(os.path.join(folder, "gps.txt"), "w") as f:
         f.write(
@@ -111,8 +113,13 @@ def save_location(drone, folder, image_name):
             f"altitude_above_sea_m: {alt_sea:.1f}\n"
             f"heading_deg: {facing}\n"
             f"gps: {fix}, {sats} satellites\n"
+            f"position_valid: {'yes' if valid else 'NO - no GPS fix, coordinates are meaningless'}\n"
         )
 
+    if not valid:
+        log(f"WARNING: no GPS fix ({fix}, {sats} satellites) - the saved position is NOT valid "
+            "and was left out of photos.csv. Go outside with a clear sky view and wait for a fix.")
+        return
     table = os.path.join(FLIGHTS_DIR, "photos.csv")
     is_new = not os.path.exists(table)
     with open(table, "a", newline="") as f:
